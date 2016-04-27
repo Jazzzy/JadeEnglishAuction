@@ -1,4 +1,4 @@
-package sample;
+package viewController;
 
 public class Controller {
 }
