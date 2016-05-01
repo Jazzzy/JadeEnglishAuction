@@ -36,6 +36,7 @@ import jade.lang.acl.MessageTemplate;
 import model.Book;
 import model.Seller;
 import viewController.BookSellerGUI;
+import viewController.Controller;
 
 import java.util.Hashtable;
 
@@ -46,10 +47,20 @@ public class BookSellerAgent extends Agent {
     // The GUI by means of which the user can add books in the catalogue
     private static BookSellerGUI myGui;
 
+    private Controller controller;
+
     private Seller seller;
 
     public Seller getSeller() {
         return seller;
+    }
+
+    public void setController(Controller controller){
+        this.controller=controller;
+    }
+
+    public Controller getController() {
+        return controller;
     }
 
     // Put agent initializations here
@@ -114,6 +125,26 @@ public class BookSellerAgent extends Agent {
             public void action() {
                 seller.addBook(new Book(title));
                 System.out.println(title + " inserted into catalogue");
+                getController().updateListOfBooksRemote();
+            }
+        });
+    }
+
+    public void addBookToAuction(final String title,float reservePrice, float increment, float startingPrice) {
+        addBehaviour(new OneShotBehaviour() {
+            public void action() {
+                Book book = seller.getBookByName(title);
+                if(book == null){
+                    Controller.showError("Not such book with that name registered, you need to add it first");
+                    return;
+                }
+                if(book.getStock()<= 0){
+                    Controller.showError("Not enough stock for that book");
+                    return;
+                }
+                seller.addAuction(book,reservePrice, increment, startingPrice);
+                System.out.println(title + " inserted into auctions");
+                getController().updateListOfAuctionsRemote();
             }
         });
     }

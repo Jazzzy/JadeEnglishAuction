@@ -46,13 +46,11 @@ public class Seller {
         }
     }
 
-    public synchronized boolean addAuction(Book book, float reservePrice) {
+    public synchronized boolean addAuction(Book book, float reservePrice,  float increment, float startingPrice) {
         if (isThereAuctionFor(book)) {
-            if (!Controller.showConfirmation("You are creating an auction for a book that is already in another auction, are you sure you want to do it?")) {
-                return false;
-            }
+            Controller.showInfo("You are creating an auction for a book that is already in another auction");
         }
-        Auction auction = new Auction(this.getAndAddIdIterator(), book, reservePrice);
+        Auction auction = new Auction(this.getAndAddIdIterator(), book, reservePrice,increment,startingPrice);
         this.currentAuctions.add(auction);
         Controller.showInfo("Auction added successfully");
         return true;

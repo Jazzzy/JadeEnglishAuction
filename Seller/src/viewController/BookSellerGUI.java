@@ -3,22 +3,18 @@ package viewController;
 import jade.BookSellerAgent;
 import javafx.application.Application;
 import javafx.event.EventHandler;
-import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
-import javafx.scene.control.Label;
 import javafx.stage.Stage;
 import javafx.stage.WindowEvent;
-
-import java.util.concurrent.CountDownLatch;
 
 public class BookSellerGUI extends Application {
 
     private static BookSellerAgent bookSellerAgent;
     private Controller controller;
 
-    public void setBookSellerAgent(BookSellerAgent bsa){
+    public void setBookSellerAgent(BookSellerAgent bsa) {
         this.bookSellerAgent = bsa;
     }
 
@@ -31,13 +27,15 @@ public class BookSellerGUI extends Application {
 
         FXMLLoader loader = new FXMLLoader(getClass().getResource("principal.fxml"));
         Parent root = loader.load();
-        primaryStage.setTitle("Seller: "+bookSellerAgent.getLocalName());
+        this.controller = loader.getController();
+        primaryStage.setTitle("Seller: " + bookSellerAgent.getLocalName());
         primaryStage.setScene(new Scene(root, 500, 500));
         primaryStage.setResizable(false);
-        primaryStage.show();
-        this.controller =loader.getController();
-
         this.controller.setAgent(this.bookSellerAgent);
+        this.controller.init();
+        primaryStage.show();
+
+
 
 
         primaryStage.setOnCloseRequest(new EventHandler<WindowEvent>() {
@@ -49,10 +47,9 @@ public class BookSellerGUI extends Application {
 
     }
 
-    public Controller getController(){
+    public Controller getController() {
         return this.controller;
     }
-
 
 
     public void dispose() {
