@@ -9,6 +9,7 @@
 <?import javafx.scene.control.Label?>
 
 
+<?import javafx.scene.web.WebView?>
 <AnchorPane prefHeight="500.0" prefWidth="500.0" style="-fx-background-color: lightBlue;" xmlns="http://javafx.com/javafx/8" xmlns:fx="http://javafx.com/fxml/1" fx:controller="viewController.Controller">
    <children>
       <Button fx:id="buttonTest" layoutX="14.0" layoutY="14.0" onAction="#onActionButtonTest" text="buttonTest" />
@@ -26,6 +27,6 @@
       <Label layoutX="51.0" layoutY="175.0" text="Books in auction" />
       <ListView fx:id="listViewListOfBooks" layoutX="20.0" layoutY="250.0" prefHeight="205.0" prefWidth="150.0" />
       <Label layoutX="60.0" layoutY="233.0" text="List of Books:" />
-      <TextArea fx:id="textAreaAuctionLog" editable="false" layoutX="183.0" layoutY="192.0" prefHeight="263.0" prefWidth="303.0" promptText="Here you can see the log of an auction" />
+      <WebView fx:id="webViewAuctionLog"  layoutX="183.0" layoutY="192.0" prefHeight="263.0" prefWidth="303.0" />
    </children>
 </AnchorPane>

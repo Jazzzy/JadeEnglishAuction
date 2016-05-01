@@ -9,6 +9,7 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
+import javafx.scene.web.WebView;
 import javafx.stage.Stage;
 import javafx.util.Callback;
 import model.Auction;
@@ -38,7 +39,7 @@ public class Controller {
     @FXML
     Button buttonAddBook;
     @FXML
-    TextArea textAreaAuctionLog;
+    WebView webViewAuctionLog;
 
 
     //The Agent Class
@@ -111,7 +112,7 @@ public class Controller {
             public void changed(ObservableValue<? extends Auction> arg0, Auction arg1, Auction arg2) {
                 if (arg2 != null) {
                     //Show log in textArea
-                    textAreaAuctionLog.setText(arg2.getLog());
+                    webViewAuctionLog.getEngine().loadContent(arg2.getLog());
                 }
             }
         });
