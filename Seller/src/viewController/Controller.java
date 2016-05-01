@@ -1,19 +1,40 @@
 package viewController;
 
 import com.sun.javafx.stage.StageHelper;
+import jade.BookSellerAgent;
 import javafx.application.Platform;
+import javafx.fxml.FXML;
 import javafx.scene.control.Alert;
 import javafx.scene.control.ButtonType;
+import javafx.scene.control.Label;
 import javafx.stage.Stage;
 
 import java.util.Optional;
 
 public class Controller {
 
+    //GUI Elements
+
+
+
+    //The Agent Class
+    private static  BookSellerAgent bookSellerAgent;
+
+
+
+    public void setAgent(BookSellerAgent bookSellerAgent) {
+        this.bookSellerAgent = bookSellerAgent;
+    }
+
+    //DEBUG
+
+    public void onActionButtonTest(){
+        this.bookSellerAgent.addBookToCatalog("Quijote");
+    }
+
+    //END DEBUG
 
     //Functions for showing info and errors to the user
-
-
     public final static void showError(String message) {
         try {
             Thread.sleep(1000);
