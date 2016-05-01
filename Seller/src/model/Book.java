@@ -7,7 +7,6 @@ public class Book {
 
     private String title;
     private Integer stock;
-    private float startingPrice;
 
     public Book(String title) {
         this.title = title;
