@@ -41,7 +41,7 @@ import viewController.Controller;
 import java.util.Hashtable;
 
 
-public class BookSellerAgent extends Agent {
+public class BookSellerAgent extends Agent { //TODO:  Meter no id de conversacion book-selling.IDDEAuction
     // The catalogue of books for sale (maps the title of a book to its price)
     private Hashtable catalogue;
     // The GUI by means of which the user can add books in the catalogue

@@ -26,19 +26,18 @@ public class BookBuyerGUI extends Application {
     public void start(Stage primaryStage) throws Exception{
         FXMLLoader loader = new FXMLLoader(getClass().getResource("principal.fxml"));
         Parent root = loader.load();
-        primaryStage.setTitle("Seller: "+bookBuyerAgent.getLocalName());
+        primaryStage.setTitle("Buyer: "+bookBuyerAgent.getLocalName());
         primaryStage.setScene(new Scene(root, 500, 500));
         primaryStage.setResizable(false);
         primaryStage.show();
-
         this.controller =loader.getController();
-
         this.controller.setAgent(this.bookBuyerAgent);
-
+        this.controller.init();
 
         primaryStage.setOnCloseRequest(new EventHandler<WindowEvent>() {
             @Override
             public void handle(WindowEvent event) {
+
                 bookBuyerAgent.doDelete();
             }
         });

@@ -126,7 +126,7 @@ public class Controller {
             return;
 
         this.bookSellerAgent.addBookToCatalog(title);
-        this.updateListOfBooks();
+      //this.updateListOfBooks();
     }
 
     @FXML
@@ -155,7 +155,7 @@ public class Controller {
 
         this.bookSellerAgent.addBookToAuction(title, reservePrice, increment, startingPrice);
 
-        this.updateListOfAuctions();
+        //this.updateListOfAuctions();
     }
 
     private void updateListOfBooks() {

@@ -27,6 +27,7 @@ package jade;
 import jade.core.AID;
 import jade.core.Agent;
 import jade.core.behaviours.Behaviour;
+import jade.core.behaviours.OneShotBehaviour;
 import jade.core.behaviours.TickerBehaviour;
 import jade.domain.DFService;
 import jade.domain.FIPAAgentManagement.DFAgentDescription;
@@ -34,7 +35,10 @@ import jade.domain.FIPAAgentManagement.ServiceDescription;
 import jade.domain.FIPAException;
 import jade.lang.acl.ACLMessage;
 import jade.lang.acl.MessageTemplate;
+import model.Book;
+import model.Buyer;
 import viewController.BookBuyerGUI;
+import viewController.Controller;
 
 public class BookBuyerAgent extends Agent {
     // The title of the book to buy
@@ -42,14 +46,30 @@ public class BookBuyerAgent extends Agent {
     // The list of known seller agents
     private AID[] sellerAgents;
 
+    private Controller controller;
 
     private static BookBuyerGUI myGui;
+
+    private Buyer buyer;
+
+    public Buyer getBuyer() {
+        return buyer;
+    }
+
+    public Controller getController() {
+        return controller;
+    }
+
+    public void setController(Controller controller) {
+        this.controller = controller;
+    }
 
     // Put agent initializations here
     protected void setup() {
         // Printout a welcome message
         System.out.println("Hallo! Buyer-agent " + getAID().getName() + " is ready.");
 
+        this.buyer = new Buyer();
 
         // Create and show the GUI
         myGui = new BookBuyerGUI();
@@ -103,9 +123,22 @@ public class BookBuyerAgent extends Agent {
     protected void takeDown() {
         // Printout a dismissal message
         myGui.dispose();
-
         System.out.println("Buyer-agent " + getAID().getName() + " terminating.");
     }
+
+    public void addWantedBook(final String title, final float maxPrice) {
+        addBehaviour(new OneShotBehaviour() {
+            public void action() {
+                buyer.addBook(new Book(title,maxPrice));
+                System.out.println(title + " inserted into wanted books");
+                getController().updateListOfBooksRemote();
+
+                //TODO ask here for books
+
+            }
+        });
+    }
+
 
     /**
      * Inner class RequestPerformer.

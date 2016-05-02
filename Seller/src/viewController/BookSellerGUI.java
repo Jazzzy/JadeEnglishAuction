@@ -36,8 +36,6 @@ public class BookSellerGUI extends Application {
         primaryStage.show();
 
 
-
-
         primaryStage.setOnCloseRequest(new EventHandler<WindowEvent>() {
             @Override
             public void handle(WindowEvent event) {
