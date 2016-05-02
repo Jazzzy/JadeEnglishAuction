@@ -5,16 +5,16 @@ package model;
  */
 public class Auction {
 
-    private Integer id;
+    private String conversationId;
     private Book item;
     private String log;
+    //TODO add bolean ended here
 
-    public Auction(Integer id, Book item) {
-        this.id = id;
+    public Auction(String conversationId, Book item) {
+        this.conversationId = conversationId;
         this.item = item;
-        this.log = " <h2>Id: [" + this.id + "] Auction for the book: " + this.getItem().getTitle() + "</h2>\n" +
+        this.log = " <h2>Conversation Id: [" + this.conversationId + "] Auction for the book: " + this.getItem().getTitle() + "</h2>\n" +
                 "<h3> My maximum price to pay is " + this.item.getMaxPriceToPay() + "</h3>\n";
-
     }
 
     public void endAuctionSuccess() {//TODO
@@ -29,12 +29,12 @@ public class Auction {
         this.log += ("<p>" + msg + "</p>\n");
     }
 
-    public Integer getId() {
-        return id;
+    public String getConversationId() {
+        return conversationId;
     }
 
-    public void setId(Integer id) {
-        this.id = id;
+    public void setConversationId(String conversationId) {
+        this.conversationId = conversationId;
     }
 
     public Book getItem() {

@@ -126,7 +126,7 @@ public class Controller {
             return;
 
         this.bookSellerAgent.addBookToCatalog(title);
-      //this.updateListOfBooks();
+        //this.updateListOfBooks();
     }
 
     @FXML
@@ -198,7 +198,11 @@ public class Controller {
                     protected void updateItem(Auction t, boolean bln) {
                         super.updateItem(t, bln);
                         if (t != null) {
-                            setText("Id: [" + t.getId() + "] " + t.getItem().getTitle() + " at price: " + t.getCurrentPrice());
+                            if (t.isEnded()) {
+                                setText("ENDED - Id: [" + t.getId() + "] " + t.getItem().getTitle() + " at price: " + t.getCurrentPrice());
+                            } else {
+                                setText("Id: [" + t.getId() + "] " + t.getItem().getTitle() + " at price: " + t.getCurrentPrice());
+                            }
                         }
                     }
                 };
@@ -208,7 +212,7 @@ public class Controller {
 
     }
 
-    public void updateListOfBooksRemote(){
+    public void updateListOfBooksRemote() {
         try {
             Thread.sleep(1000);
         } catch (InterruptedException e) {
@@ -217,12 +221,12 @@ public class Controller {
         Platform.runLater(new Runnable() {
             @Override
             public void run() {
-               updateListOfBooks();
+                updateListOfBooks();
             }
         });
     }
 
-    public void updateListOfAuctionsRemote(){
+    public void updateListOfAuctionsRemote() {
         try {
             Thread.sleep(1000);
         } catch (InterruptedException e) {

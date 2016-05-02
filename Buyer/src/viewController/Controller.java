@@ -144,7 +144,7 @@ public class Controller {
                     protected void updateItem(Auction t, boolean bln) {
                         super.updateItem(t, bln);
                         if (t != null) {
-                            setText("Id: [" + t.getId() + "] " + t.getItem().getTitle() + " with max price to pay of: " + t.getItem().getMaxPriceToPay());
+                            setText( t.getItem().getTitle() + " with max price to pay of: " + t.getItem().getMaxPriceToPay());
                         }
                     }
                 };

@@ -46,11 +46,12 @@ public class Seller {
         }
     }
 
-    public synchronized boolean addAuction(Book book, float reservePrice,  float increment, float startingPrice) {
+    public synchronized boolean addAuction(Book book, float reservePrice, float increment, float startingPrice) {
         if (isThereAuctionFor(book)) {
             Controller.showInfo("You are creating an auction for a book that is already in another auction");
+            return false;
         }
-        Auction auction = new Auction(this.getAndAddIdIterator(), book, reservePrice,increment,startingPrice);
+        Auction auction = new Auction(this.getAndAddIdIterator(), book, reservePrice, increment, startingPrice);
         this.currentAuctions.add(auction);
         Controller.showInfo("Auction added successfully");
         return true;
@@ -58,7 +59,7 @@ public class Seller {
 
     public boolean isThereAuctionFor(Book book) {
         for (Auction a : this.currentAuctions) {
-            if (a.getItem().getTitle().equals(book.getTitle())) {
+            if (a.getItem().getTitle().equals(book.getTitle()) && !a.isEnded()) {
                 return true;
             }
         }
@@ -68,6 +69,15 @@ public class Seller {
     public Auction getAuctionById(Integer id) {
         for (Auction a : this.currentAuctions) {
             if (a.getId() == id) {
+                return a;
+            }
+        }
+        return null;
+    }
+
+    public Auction getAuctionByTitle(String title) {
+        for (Auction a : this.currentAuctions) {
+            if (a.getItem().getTitle().equals(title)) {
                 return a;
             }
         }

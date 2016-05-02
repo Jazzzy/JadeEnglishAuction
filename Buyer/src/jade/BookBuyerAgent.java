@@ -26,7 +26,7 @@ package jade;
 
 import jade.core.AID;
 import jade.core.Agent;
-import jade.core.behaviours.Behaviour;
+import jade.core.behaviours.CyclicBehaviour;
 import jade.core.behaviours.OneShotBehaviour;
 import jade.core.behaviours.TickerBehaviour;
 import jade.domain.DFService;
@@ -35,16 +35,18 @@ import jade.domain.FIPAAgentManagement.ServiceDescription;
 import jade.domain.FIPAException;
 import jade.lang.acl.ACLMessage;
 import jade.lang.acl.MessageTemplate;
+import model.Auction;
 import model.Book;
 import model.Buyer;
 import viewController.BookBuyerGUI;
 import viewController.Controller;
 
+import java.util.ArrayList;
+
 public class BookBuyerAgent extends Agent {
-    // The title of the book to buy
-    private String targetBookTitle;
+
     // The list of known seller agents
-    private AID[] sellerAgents;
+    private AID[] sellerAgents = null;
 
     private Controller controller;
 
@@ -81,43 +83,37 @@ public class BookBuyerAgent extends Agent {
             }
         }.start();
 
-        // Get the title of the book to buy as a start-up argument
-        Object[] args = getArguments();
-        if (true) { //TODO
-            targetBookTitle = "Quijote";
-            System.out.println("Target book is " + targetBookTitle);
 
-            // Add a TickerBehaviour that schedules a request to seller agents every minute
-            addBehaviour(new TickerBehaviour(this, 60000) {
-                protected void onTick() {
-                    System.out.println("Trying to buy " + targetBookTitle);
-                    // Update the list of seller agents
-                    DFAgentDescription template = new DFAgentDescription();
-                    ServiceDescription sd = new ServiceDescription();
-                    sd.setType("book-selling");
-                    template.addServices(sd);
-                    try {
-                        DFAgentDescription[] result = DFService.search(myAgent, template);
-                        System.out.println("Found the following seller agents:");
-                        sellerAgents = new AID[result.length];
-                        for (int i = 0; i < result.length; ++i) {
-                            sellerAgents[i] = result[i].getName();
-                            System.out.println(sellerAgents[i].getName());
-                        }
-                    } catch (FIPAException fe) {
-                        fe.printStackTrace();
+        // Add a TickerBehaviour that updates seller agents every minute
+        addBehaviour(new TickerBehaviour(this, 5000) {
+            protected void onTick() {
+                // Update the list of seller agents
+                DFAgentDescription template = new DFAgentDescription();
+                ServiceDescription sd = new ServiceDescription();
+                sd.setType("book-auctioning");
+                template.addServices(sd);
+                try {
+                    DFAgentDescription[] result = DFService.search(myAgent, template);
+                    System.out.println("Found the following seller agents:");
+                    sellerAgents = new AID[result.length];
+                    for (int i = 0; i < result.length; ++i) {
+                        sellerAgents[i] = result[i].getName();
+                        System.out.println(sellerAgents[i].getName());
                     }
-
-                    // Perform the request
-                    myAgent.addBehaviour(new RequestPerformer());
+                } catch (FIPAException fe) {
+                    fe.printStackTrace();
                 }
-            });
-        } else {
-            // Make the agent terminate
-            System.out.println("No target book title specified");
-            doDelete();
-        }
+            }
+        });
+
+        addBehaviour(new AskForAuctions(this));
+
+        addBehaviour(new LookingForAuctions());
+
+        addBehaviour(new respondToProposals());
+
     }
+
 
     // Put agent clean-up operations here
     protected void takeDown() {
@@ -129,7 +125,7 @@ public class BookBuyerAgent extends Agent {
     public void addWantedBook(final String title, final float maxPrice) {
         addBehaviour(new OneShotBehaviour() {
             public void action() {
-                buyer.addBook(new Book(title,maxPrice));
+                buyer.addBook(new Book(title, maxPrice));
                 System.out.println(title + " inserted into wanted books");
                 getController().updateListOfBooksRemote();
 
@@ -140,11 +136,122 @@ public class BookBuyerAgent extends Agent {
     }
 
 
+    private class AskForAuctions extends TickerBehaviour {
+
+        public AskForAuctions(Agent agent) {
+            super(agent, 500);
+        }
+
+        @Override
+        protected void onTick() {
+            ArrayList<Book> list = buyer.getBooksWithNoAuction();
+            if (list == null)
+                return;
+
+            if (sellerAgents == null || sellerAgents.length <= 0)
+                return;
+
+            for (Book book : list) {
+
+                System.out.println("Looking for " + book.getTitle());
+
+                ACLMessage msg = new ACLMessage(ACLMessage.QUERY_REF);
+                msg.setContent(book.getTitle());
+                for (int i = 0; i < sellerAgents.length; i++) {
+                    System.out.println("Asking to " + sellerAgents[i]);
+                    msg.addReceiver(sellerAgents[i]);
+                }
+                myAgent.send(msg);
+            }
+        }
+
+
+    }
+
+    private class LookingForAuctions extends CyclicBehaviour {
+
+        public void action() {
+
+            MessageTemplate mt = MessageTemplate.MatchPerformative(ACLMessage.INFORM);
+            ACLMessage msg = myAgent.receive(mt);
+            if (msg != null) {
+
+                System.out.println("Receiver inform from " + msg.getSender());
+                System.out.println("Said: " + msg.getContent());
+
+                String content = msg.getContent();
+                String[] fragments = content.split("%");
+                float price = Float.parseFloat(fragments[0]);
+                String conversationId = fragments[1];
+                String title = fragments[2];
+
+                Book book = buyer.getBookByName(title);
+                if (!buyer.isThereAuctionFor(book)) {
+                    buyer.addAuction(book, conversationId);
+
+                    Auction auction = buyer.getAuctionByConversationId(conversationId);
+
+                    if (price < book.getMaxPriceToPay()) {
+                        ACLMessage reply = msg.createReply();
+                        reply.setPerformative(ACLMessage.PROPOSE);
+                        reply.setConversationId(conversationId);
+                        myAgent.send(reply);
+
+                        auction.addToLog("Sended a propose to " + msg.getSender().getLocalName() + " Saying we accept the price: " + price);
+
+                    }
+
+                }
+
+                controller.updateListOfAuctionsRemote();
+
+            } else {
+                block();
+            }
+        }
+    }
+
+    private class respondToProposals extends CyclicBehaviour {
+
+        public void action() {
+
+            MessageTemplate mt = MessageTemplate.MatchPerformative(ACLMessage.CFP);
+            ACLMessage msg = myAgent.receive(mt);
+            if (msg != null) {
+                Auction auction = buyer.getAuctionByConversationId(msg.getConversationId());
+
+
+                if (auction != null) {
+
+                    String content = msg.getContent();
+                    Float proposedPrice = Float.parseFloat(content);
+
+                    auction.addToLog("Received a call for proposal from " + msg.getSender().getLocalName() + " with the price: " + proposedPrice);
+
+                    if (proposedPrice < auction.getItem().getMaxPriceToPay()) { //We can accept the proposal
+                        ACLMessage reply = msg.createReply();
+                        reply.setPerformative(ACLMessage.PROPOSE);
+                        reply.setConversationId(auction.getConversationId());
+                        myAgent.send(reply);
+                        auction.addToLog("Sended a propose to " + msg.getSender().getLocalName() + " Saying we accept the price: " + proposedPrice);
+                    }
+                }
+
+                controller.updateListOfAuctionsRemote();
+
+            } else {
+                block();
+            }
+        }
+    }
+
+
     /**
      * Inner class RequestPerformer.
      * This is the behaviour used by Book-buyer agents to request seller
      * agents the target book.
      */
+    /*
     private class RequestPerformer extends Behaviour {
         private AID bestSeller; // The agent who provides the best offer
         private int bestPrice;  // The best offered price
@@ -234,4 +341,6 @@ public class BookBuyerAgent extends Agent {
             return ((step == 2 && bestSeller == null) || step == 4);
         }
     }  // End of inner class RequestPerformer
+
+    */
 }

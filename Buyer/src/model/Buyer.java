@@ -9,29 +9,39 @@ import java.util.ArrayList;
  */
 public class Buyer {
 
-    private Integer idIterator;
     private ArrayList<Book> wantedBooks;
     private ArrayList<Auction> currentAuctions;
 
     public Buyer() {
         this.wantedBooks = new ArrayList<>();
         this.currentAuctions = new ArrayList<>();
-        idIterator = 1;
     }
 
     public ArrayList<Auction> getCurrentAuctions() {
         return currentAuctions;
     }
 
-    private synchronized Integer getAndAddIdIterator() {
-        this.idIterator++;
-        return (this.idIterator - 1);
+
+    public ArrayList<Book> getBooksWithNoAuction() {
+        ArrayList<Book> list = new ArrayList<>();
+
+        for (Book book : this.getWantedBooks()) {
+            if (!isThereAuctionFor(book)) {
+                list.add(book);
+            }
+        }
+        if (list.size() == 0) {
+            return null;
+        } else {
+            return list;
+        }
+
     }
 
 //Functions to work with the current auctions taking place
 
-    public synchronized boolean removeAuctionById(Integer id) {
-        Auction aux = this.getAuctionById(id);
+    public synchronized boolean removeAuctionByConversationId(String id) {
+        Auction aux = this.getAuctionByConversationId(id);
         if (aux != null) {
             this.currentAuctions.remove(aux);
             Controller.showInfo("Auction removed successfully");
@@ -42,11 +52,12 @@ public class Buyer {
         }
     }
 
-    public synchronized boolean addAuction(Book book) {
+    public synchronized boolean addAuction(Book book, String conversationId) {
         if (isThereAuctionFor(book)) {
             Controller.showInfo("You are creating an auction for a book that is already in another auction");
+            return false;
         }
-        Auction auction = new Auction(this.getAndAddIdIterator(), book);
+        Auction auction = new Auction(conversationId, book);
         this.currentAuctions.add(auction);
         Controller.showInfo("Auction added successfully");
         return true;
@@ -61,9 +72,9 @@ public class Buyer {
         return false;
     }
 
-    public Auction getAuctionById(Integer id) {
+    public Auction getAuctionByConversationId(String conversationId) {
         for (Auction a : this.currentAuctions) {
-            if (a.getId() == id) {
+            if (a.getConversationId() == conversationId) {
                 return a;
             }
         }
