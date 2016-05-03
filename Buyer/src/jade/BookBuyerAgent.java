@@ -215,11 +215,14 @@ public class BookBuyerAgent extends Agent {
 
         public void action() {
 
+            //System.out.println("Executing respond to proposals----------------------------------------------------------");
+
             MessageTemplate mt = MessageTemplate.MatchPerformative(ACLMessage.CFP);
             ACLMessage msg = myAgent.receive(mt);
             if (msg != null) {
+                //System.out.println("Executing respond to proposals not null msg----------------------------------------------------------");
                 Auction auction = buyer.getAuctionByConversationId(msg.getConversationId());
-
+                //System.out.println(msg.getConversationId()+"----------------------------------------------------------");
 
                 if (auction != null) {
 

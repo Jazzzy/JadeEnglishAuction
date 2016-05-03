@@ -74,7 +74,7 @@ public class Buyer {
 
     public Auction getAuctionByConversationId(String conversationId) {
         for (Auction a : this.currentAuctions) {
-            if (a.getConversationId() == conversationId) {
+            if (a.getConversationId().equals(conversationId)) {
                 return a;
             }
         }
