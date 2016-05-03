@@ -37,10 +37,8 @@ public class Controller {
     WebView webViewAuctionLog;
 
 
-
     //The Agent Class
-    private static  BookBuyerAgent bookBuyerAgent;
-
+    private static BookBuyerAgent bookBuyerAgent;
 
 
     public void setAgent(BookBuyerAgent bookBuyerAgent) {
@@ -48,7 +46,7 @@ public class Controller {
     }
 
     //DEBUG
-    public void onActionButtonTest(){
+    public void onActionButtonTest() {
     }
     //END DEBUG
 
@@ -99,14 +97,14 @@ public class Controller {
         float price = Float.parseFloat(textFieldPriceToPay.getText());
 
 
-        this.bookBuyerAgent.addWantedBook(title,price);
+        this.bookBuyerAgent.addWantedBook(title, price);
         //this.updateListOfBooks();
     }
 
 
     private void updateListOfBooks() {
 
-        if (bookBuyerAgent== null || bookBuyerAgent.getBuyer() == null || bookBuyerAgent.getBuyer().getWantedBooks() == null)
+        if (bookBuyerAgent == null || bookBuyerAgent.getBuyer() == null || bookBuyerAgent.getBuyer().getWantedBooks() == null)
             return;
 
         ObservableList<Book> myObservableList4 = FXCollections.observableList(bookBuyerAgent.getBuyer().getWantedBooks());
@@ -119,7 +117,7 @@ public class Controller {
                     protected void updateItem(Book t, boolean bln) {
                         super.updateItem(t, bln);
                         if (t != null) {
-                            setText(t.getTitle());
+                            setText(t.getTitle()+"max price: "+t.getMaxPriceToPay());
                         }
                     }
                 };
@@ -137,24 +135,36 @@ public class Controller {
         ObservableList<Auction> myObservableList4 = FXCollections.observableList(bookBuyerAgent.getBuyer().getCurrentAuctions());
         comboBoxAuctionSelected.setItems(myObservableList4);
         comboBoxAuctionSelected.setCellFactory(new Callback<ListView<Auction>, ListCell<Auction>>() {
-            @Override
-            public ListCell<Auction> call(ListView<Auction> p) {
-                ListCell<Auction> cell = new ListCell<Auction>() {
-                    @Override
-                    protected void updateItem(Auction t, boolean bln) {
-                        super.updateItem(t, bln);
-                        if (t != null) {
-                            setText( t.getItem().getTitle() + " with max price to pay of: " + t.getItem().getMaxPriceToPay());
-                        }
-                    }
-                };
-                return cell;
-            }
-        });
+                                                   @Override
+                                                   public ListCell<Auction> call(ListView<Auction> p) {
+                                                       ListCell<Auction> cell = new ListCell<Auction>() {
+                                                           @Override
+                                                           protected void updateItem(Auction t, boolean bln) {
+                                                               super.updateItem(t, bln);
+                                                               if (t != null) {
+
+                                                                   if (t.isEnded()) {
+                                                                       if (t.isWon()) {
+                                                                           setText("[ENDED] " + t.getItem().getTitle() + " we won");
+                                                                       } else {
+                                                                           setText("[ENDED] " + t.getItem().getTitle() + " we lost");
+                                                                       }
+                                                                   } else {
+                                                                       setText(t.getItem().getTitle() + " with max price to pay of: " + t.getItem().getMaxPriceToPay());
+
+                                                                   }
+                                                               }
+                                                           }
+                                                       };
+                                                       return cell;
+                                                   }
+                                               }
+
+        );
 
     }
 
-    public void updateListOfBooksRemote(){
+    public void updateListOfBooksRemote() {
         try {
             Thread.sleep(1000);
         } catch (InterruptedException e) {
@@ -168,7 +178,7 @@ public class Controller {
         });
     }
 
-    public void updateListOfAuctionsRemote(){
+    public void updateListOfAuctionsRemote() {
         try {
             Thread.sleep(1000);
         } catch (InterruptedException e) {
@@ -182,7 +192,6 @@ public class Controller {
             }
         });
     }
-
 
 
     //Functions for showing info and errors to the user

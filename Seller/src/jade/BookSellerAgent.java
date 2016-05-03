@@ -169,9 +169,9 @@ public class BookSellerAgent extends Agent { //TODO:  Meter no id de conversacio
                 // CFP Message received. Process it
                 String title = msg.getContent();
                 ACLMessage reply = msg.createReply();
-                Auction auction = seller.getAuctionByTitle(title);
+                Auction auction = seller.getCurrentAuctionByTitle(title);
                 System.out.println("Looking for an auction for " + title);
-                if (auction != null) {
+                if (auction != null ) {
                     // The requested book is available for sale. Reply with the price
                     reply.setPerformative(ACLMessage.INFORM);
                     reply.setContent(Float.toString(auction.getCurrentPrice()) + "%auction-" + auction.getId() + "%" + auction.getItem().getTitle());
@@ -216,8 +216,13 @@ public class BookSellerAgent extends Agent { //TODO:  Meter no id de conversacio
                 return;
             }
 
-            //TODO inform the winner
-            this.auction.addToLog("On tick " + this.getTickCount() + " we have finished the auction with [" + this.winner.getLocalName() + "] as a winner");
+            ACLMessage informWin = new ACLMessage(ACLMessage.CONFIRM);
+            informWin.addReceiver(this.winner);
+            informWin.setConversationId("auction-" + auction.getId());
+            informWin.setContent("You won%" + auction.getItem() + "%for the price%" + auction.getCurrentPrice());
+            myAgent.send(informWin);
+
+            this.auction.addToLog("On tick " + this.getTickCount() + " we have finished the auction with [" + this.winner.getLocalName() + "] as a winner and he paid " + auction.getCurrentPrice());
             auction.endAuctionSuccess();
             this.stop();
             return;

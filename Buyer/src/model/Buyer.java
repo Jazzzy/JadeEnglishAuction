@@ -65,7 +65,7 @@ public class Buyer {
 
     public boolean isThereAuctionFor(Book book) {
         for (Auction a : this.currentAuctions) {
-            if (a.getItem().getTitle().equals(book.getTitle())) {
+            if (a.getItem().getTitle().equals(book.getTitle()) && !a.isEnded()) {
                 return true;
             }
         }
@@ -87,6 +87,18 @@ public class Buyer {
     public boolean removeBook(Book book) {
         if (isThereBook(book)) {
             Book aux = this.getBookByName(book.getTitle());
+            this.wantedBooks.remove(aux);
+            return true;
+        } else {
+            Controller.showError("The book cannot be removed because it does not exist");
+            return false;
+        }
+    }
+
+    public boolean removeBookByTitle(String book) {
+
+        Book aux = this.getBookByName(book);
+        if (aux != null) {
             this.wantedBooks.remove(aux);
             return true;
         } else {

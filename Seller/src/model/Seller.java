@@ -84,6 +84,15 @@ public class Seller {
         return null;
     }
 
+    public Auction getCurrentAuctionByTitle(String title) {
+        for (Auction a : this.currentAuctions) {
+            if (a.getItem().getTitle().equals(title) && !a.isEnded()) {
+                return a;
+            }
+        }
+        return null;
+    }
+
 
 //Functions to work with the stock of books in the seller
 

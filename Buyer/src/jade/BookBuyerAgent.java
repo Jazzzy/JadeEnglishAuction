@@ -144,6 +144,7 @@ public class BookBuyerAgent extends Agent {
 
         @Override
         protected void onTick() {
+
             ArrayList<Book> list = buyer.getBooksWithNoAuction();
             if (list == null)
                 return;
@@ -215,6 +216,26 @@ public class BookBuyerAgent extends Agent {
 
         public void action() {
 
+            MessageTemplate mtc = MessageTemplate.MatchPerformative(ACLMessage.CONFIRM);
+            ACLMessage confirm = myAgent.receive(mtc);
+            if (confirm != null) {
+                Auction auction = buyer.getAuctionByConversationId(confirm.getConversationId());
+                if (auction != null) {
+                    auction.addToLog("Received this from seller [" + confirm.getSender().getLocalName() + "]: " + confirm.getContent().split("%"));
+                    String item = confirm.getContent().split("%")[1];
+                    float priceToPay = Float.parseFloat(confirm.getContent().split("%")[3]);
+                    auction.addToLog("We have won the auction for " + item + " and we need to pay " + priceToPay);
+
+                    //buyer.removeAuctionByConversationId(confirm.getConversationId());
+                    auction.setEnded(true);
+                    auction.endAuctionSuccess();
+                    buyer.removeBook(auction.getItem());
+
+                }
+                controller.updateListOfAuctionsRemote();
+                return;
+            }
+
             //System.out.println("Executing respond to proposals----------------------------------------------------------");
 
             MessageTemplate mt = MessageTemplate.MatchPerformative(ACLMessage.CFP);
@@ -231,12 +252,16 @@ public class BookBuyerAgent extends Agent {
 
                     auction.addToLog("Received a call for proposal from " + msg.getSender().getLocalName() + " with the price: " + proposedPrice);
 
-                    if (proposedPrice < auction.getItem().getMaxPriceToPay()) { //We can accept the proposal
+                    if (proposedPrice <= auction.getItem().getMaxPriceToPay()) { //We can accept the proposal
                         ACLMessage reply = msg.createReply();
                         reply.setPerformative(ACLMessage.PROPOSE);
                         reply.setConversationId(auction.getConversationId());
                         myAgent.send(reply);
                         auction.addToLog("Sended a propose to " + msg.getSender().getLocalName() + " Saying we accept the price: " + proposedPrice);
+                    } else {
+                        auction.addToLog("We do not accept the price of " + proposedPrice + " so we do not send a propose");
+                        auction.setEnded(true);
+                        auction.endAuctionFail();
                     }
                 }
 
