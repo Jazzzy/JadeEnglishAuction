@@ -229,10 +229,6 @@ public class BookSellerAgent extends Agent { //TODO:  Meter no id de conversacio
 
         }
 
-        public void sendNextProposal(AID buyer) {
-
-
-        }
 
         public void onTick() {
 
@@ -292,6 +288,9 @@ public class BookSellerAgent extends Agent { //TODO:  Meter no id de conversacio
                 myAgent.send(cfp);
 
             }
+
+            controller.updateListOfAuctionsRemote();
+
         }
     }
 

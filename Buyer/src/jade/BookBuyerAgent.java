@@ -188,20 +188,17 @@ public class BookBuyerAgent extends Agent {
 
                 Book book = buyer.getBookByName(title);
                 if (!buyer.isThereAuctionFor(book)) {
-                    buyer.addAuction(book, conversationId);
-
-                    Auction auction = buyer.getAuctionByConversationId(conversationId);
-
                     if (price < book.getMaxPriceToPay()) {
+                        buyer.addAuction(book, conversationId);
+                        Auction auction = buyer.getAuctionByConversationId(conversationId);
+
                         ACLMessage reply = msg.createReply();
                         reply.setPerformative(ACLMessage.PROPOSE);
                         reply.setConversationId(conversationId);
                         myAgent.send(reply);
 
                         auction.addToLog("Sended a propose to " + msg.getSender().getLocalName() + " Saying we accept the price: " + price);
-
                     }
-
                 }
 
                 controller.updateListOfAuctionsRemote();
