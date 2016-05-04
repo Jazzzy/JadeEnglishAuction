@@ -67,15 +67,12 @@ public class BookSellerAgent extends Agent { //TODO:  Meter no id de conversacio
         return controller;
     }
 
-    // Put agent initializations here
     protected void setup() {
 
         this.seller = new Seller();
 
-        // Create the catalogue
         catalogue = new Hashtable();
 
-        // Create and show the GUI
         myGui = new BookSellerGUI();
         myGui.setBookSellerAgent(this);
         new Thread() {
@@ -86,41 +83,37 @@ public class BookSellerAgent extends Agent { //TODO:  Meter no id de conversacio
         }.start();
 
 
-        // Register the book-selling service in the yellow pages
-        DFAgentDescription dfd = new DFAgentDescription();
-        dfd.setName(getAID());
-        ServiceDescription sd = new ServiceDescription();
-        sd.setType("book-auctioning");
-        sd.setName("JADE-book-auctioning");
-        dfd.addServices(sd);
-        try {
-            DFService.register(this, dfd);
-        } catch (FIPAException fe) {
-            fe.printStackTrace();
-        }
-
-        // Add the behaviour serving queries from buyer agents
-        addBehaviour(new AskingForBook());
-
     }
 
-    // Put agent clean-up operations here
-    protected void takeDown() {
-        // Deregister from the yellow pages
+    public ArrayList<AID> getAllBuyers() {
+        DFAgentDescription template = new DFAgentDescription();
+        ServiceDescription sd = new ServiceDescription();
+        sd.setType("book-buying");
+        template.addServices(sd);
         try {
-            DFService.deregister(this);
+
+            DFAgentDescription[] result = DFService.search(this, template);
+            ArrayList<AID> buyers = new ArrayList<>();
+            for (int i = 0; i < result.length; ++i) {
+                buyers.add(result[i].getName());
+            }
+            return buyers;
         } catch (FIPAException fe) {
             fe.printStackTrace();
         }
-        // Close the GUI
+
+        return null;
+    }
+
+
+    protected void takeDown() {
+
         myGui.dispose();
-        // Printout a dismissal message
+
         System.out.println("Seller-agent " + getAID().getName() + " terminating.");
     }
 
-    /**
-     * This is invoked by the GUI when the user adds a new book for sale
-     */
+
     public void addBookToCatalog(final String title) {
         addBehaviour(new OneShotBehaviour() {
             public void action() {
@@ -143,9 +136,24 @@ public class BookSellerAgent extends Agent { //TODO:  Meter no id de conversacio
                     Controller.showError("Not enough stock for that book");
                     return;
                 }
-                if (seller.addAuction(book, reservePrice, increment, startingPrice)) {
+                if (seller.addAuction(book, reservePrice, increment, startingPrice)) { //ADDED AUCTIONS
+
+
                     getController().updateListOfAuctionsRemote();
                     myAgent.addBehaviour(new Auctioning(myAgent, seller.getAuctionByTitle(book.getTitle())));
+
+
+                    ArrayList<AID> listOfBuyers =getAllBuyers();
+                    ACLMessage cfp = new ACLMessage(ACLMessage.CFP);
+                    cfp.setContent(String.valueOf( seller.getAuctionByTitle(book.getTitle()).getCurrentPrice()));
+                    cfp.setConversationId(seller.getAuctionByTitle(book.getTitle()).getItem().getTitle());
+                    for (AID aid : listOfBuyers) {
+                        cfp.addReceiver(aid);
+                    }
+                    myAgent.send(cfp);
+                    controller.updateListOfAuctionsRemote();
+
+
                 }
 
                 return;
@@ -153,75 +161,23 @@ public class BookSellerAgent extends Agent { //TODO:  Meter no id de conversacio
         });
     }
 
-    /**
-     * Inner class OfferRequestsServer.
-     * This is the behaviour used by Book-seller agents to serve incoming requests
-     * for offer from buyer agents.
-     * If the requested book is in the local catalogue the seller agent replies
-     * with a PROPOSE message specifying the price. Otherwise a REFUSE message is
-     * sent back.
-     */
-    private class AskingForBook extends CyclicBehaviour {
-        public void action() {
-            MessageTemplate mt = MessageTemplate.MatchPerformative(ACLMessage.QUERY_REF);
-            ACLMessage msg = myAgent.receive(mt);
-            if (msg != null) {
-                // CFP Message received. Process it
-                String title = msg.getContent();
-                ACLMessage reply = msg.createReply();
-                Auction auction = seller.getCurrentAuctionByTitle(title);
-                System.out.println("Looking for an auction for " + title);
-                if (auction != null) {
-                    // The requested book is available for sale. Reply with the price
-                    reply.setPerformative(ACLMessage.INFORM);
-                    reply.setContent(Float.toString(auction.getCurrentPrice()) + "%auction-" + auction.getId() + "%" + auction.getItem().getTitle());
-                } else {
-                    // The requested book is NOT available for sale.
-                    reply.setPerformative(ACLMessage.REFUSE);
-                    reply.setContent("not-available");
-                }
-                myAgent.send(reply);
-            } else {
-                block();
-            }
-        }
-    }  // End of inner class OfferRequestsServer
-
 
     private class Auctioning extends TickerBehaviour {
 
-        public Auction auction;
+        private Auction auction;
 
-        public AID winner = null;
+        private AID winner = null;
 
-
-        private ArrayList<AID> listOfBuyers;
 
         public Auctioning(Agent agent, Auction auction) {
             super(agent, 10000);
             this.auction = auction;
         }
 
-        private void tellLoosers(ArrayList<AID> loosers) {
-
-            ACLMessage informLost = new ACLMessage(ACLMessage.DISCONFIRM);
-
-            for (AID aid : loosers) {
-                informLost.addReceiver(aid);
-            }
-
-            informLost.setConversationId("auction-" + auction.getId());
-            informLost.setContent("You lost%" + auction.getItem().getTitle() + "% this time, try again next auction");
-            myAgent.send(informLost);
-
-        }
-
         public void finishAuction() {
-
 
             if (winner == null) {
                 this.auction.addToLog("On tick " + this.getTickCount() + " we have finished the auction with no winner");
-                this.tellLoosers(this.listOfBuyers);
                 auction.endAuctionFail();
                 this.stop();
                 return;
@@ -229,24 +185,21 @@ public class BookSellerAgent extends Agent { //TODO:  Meter no id de conversacio
 
             if (auction.getCurrentPrice() < auction.getReservePrice()) {
                 this.auction.addToLog("On tick " + this.getTickCount() + " we have finished the auction with no winner because we didn't surpass the reserve price");
-                this.tellLoosers(this.listOfBuyers);
                 auction.endAuctionFail();
                 this.stop();
                 return;
             }
 
-            ACLMessage informWin = new ACLMessage(ACLMessage.CONFIRM);
+            ACLMessage informWin = new ACLMessage(ACLMessage.REQUEST);
             informWin.addReceiver(this.winner);
-            informWin.setConversationId("auction-" + auction.getId());
-            informWin.setContent("You won%" + auction.getItem().getTitle() + "%for the price%" + (auction.getCurrentPrice() - auction.getIncrement()));
+            informWin.setConversationId(auction.getItem().getTitle());
+            informWin.setContent(String.valueOf(auction.getCurrentPrice()-auction.getIncrement()));
             myAgent.send(informWin);
-
-            this.listOfBuyers.remove(this.winner);
-            this.tellLoosers(this.listOfBuyers);
-
 
             this.auction.addToLog("On tick " + this.getTickCount() + " we have finished the auction with [" + this.winner.getLocalName() + "] as a winner and he paid " + (auction.getCurrentPrice() - auction.getIncrement()));
             auction.endAuctionSuccess();
+            getController().updateListOfBooksRemote();
+            getController().updateListOfAuctionsRemote();
             this.stop();
             return;
 
@@ -255,23 +208,19 @@ public class BookSellerAgent extends Agent { //TODO:  Meter no id de conversacio
 
         public void onTick() {
 
-            listOfBuyers = new ArrayList<>();
-
-            MessageTemplate mt = MessageTemplate.MatchPerformative(ACLMessage.PROPOSE).MatchConversationId("auction-" + auction.getId()).MatchContent(String.valueOf(auction.getCurrentPrice()));
+            MessageTemplate mt = MessageTemplate.MatchPerformative(ACLMessage.PROPOSE).MatchConversationId(auction.getItem().getTitle()).MatchContent(String.valueOf(auction.getCurrentPrice()));
 
             ACLMessage msg = myAgent.receive(mt);
             if (msg == null) { //No proposes for this auction
-                if (getTickCount() > 2) { //If the auction had not a lot of ticks, we do not end it
-                    finishAuction();
-                } else {
-                    this.auction.addToLog("On tick " + this.getTickCount() + " we didn't have any replies, we dont end the auction because it just started");
+                if(winner==null){
+                    this.auction.addToLog("On tick " + this.getTickCount() + " we didn't have any replies and no winners, we dont end the auction");
+                }else {
+                        finishAuction();
                 }
-                return;
+
             } else {
 
                 this.winner = msg.getSender();//We pick the first and take it as the current winner
-
-                listOfBuyers.add(msg.getSender()); //We add it here in case we have to send another call for proposal
 
                 ACLMessage reply = msg.createReply();
                 reply.setPerformative(ACLMessage.ACCEPT_PROPOSAL);
@@ -287,14 +236,12 @@ public class BookSellerAgent extends Agent { //TODO:  Meter no id de conversacio
                         finishAuction();
                         return;
                     }
-
                 } else {
                     while (msg != null) { //And responding telling them that they are not in the first place
                         reply = msg.createReply();
                         reply.setPerformative(ACLMessage.REJECT_PROPOSAL);
                         reply.setContent(String.valueOf(auction.getCurrentPrice()));
                         myAgent.send(reply);
-                        listOfBuyers.add(msg.getSender());
                         this.auction.addToLog("On tick " + this.getTickCount() + " we have received a proposal from [" + msg.getSender().getLocalName() + "] but it was not the first one");
                         msg = myAgent.receive(mt);
                     }
@@ -302,53 +249,21 @@ public class BookSellerAgent extends Agent { //TODO:  Meter no id de conversacio
                 }
 
                 this.auction.makeIncrement();
-                //Now we send the next cfp to all the current buyers
-                ACLMessage cfp = new ACLMessage(ACLMessage.CFP);
-                cfp.setContent(Float.toString(auction.getCurrentPrice()));
-                cfp.setConversationId("auction-" + auction.getId());
-                //cfp.setReplyWith("cfp" + System.currentTimeMillis()); // Unique value
 
-                for (AID aid : listOfBuyers) {
-                    cfp.addReceiver(aid);
-                }
-                myAgent.send(cfp);
             }
 
+            //Now we send the next cfp to all the current buyers
+            ArrayList<AID> listOfBuyers =getAllBuyers();
+            ACLMessage cfp = new ACLMessage(ACLMessage.CFP);
+            cfp.setContent(String.valueOf(auction.getCurrentPrice()));
+            cfp.setConversationId(auction.getItem().getTitle());
+            for (AID aid : listOfBuyers) {
+                cfp.addReceiver(aid);
+            }
+            myAgent.send(cfp);
             controller.updateListOfAuctionsRemote();
 
         }
     }
 
-    /**
-     * Inner class PurchaseOrdersServer.
-     * This is the behaviour used by Book-seller agents to serve incoming
-     * offer acceptances (i.e. purchase orders) from buyer agents.
-     * The seller agent removes the purchased book from its catalogue
-     * and replies with an INFORM message to notify the buyer that the
-     * purchase has been sucesfully completed.
-     */
-    private class PurchaseOrdersServer extends CyclicBehaviour {
-        public void action() {
-            MessageTemplate mt = MessageTemplate.MatchPerformative(ACLMessage.ACCEPT_PROPOSAL);
-            ACLMessage msg = myAgent.receive(mt);
-            if (msg != null) {
-                // ACCEPT_PROPOSAL Message received. Process it
-                String title = msg.getContent();
-                ACLMessage reply = msg.createReply();
-
-                Integer price = (Integer) catalogue.remove(title);
-                if (price != null) {
-                    reply.setPerformative(ACLMessage.INFORM);
-                    System.out.println(title + " sold to agent " + msg.getSender().getName());
-                } else {
-                    // The requested book has been sold to another buyer in the meanwhile .
-                    reply.setPerformative(ACLMessage.FAILURE);
-                    reply.setContent("not-available");
-                }
-                myAgent.send(reply);
-            } else {
-                block();
-            }
-        }
-    }  // End of inner class OfferRequestsServer
 }

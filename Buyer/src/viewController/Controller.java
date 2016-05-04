@@ -12,7 +12,6 @@ import javafx.scene.control.*;
 import javafx.scene.web.WebView;
 import javafx.stage.Stage;
 import javafx.util.Callback;
-import model.Auction;
 import model.Book;
 
 import java.util.Optional;
@@ -74,9 +73,9 @@ public class Controller {
         this.updateListOfBooks();
         this.updateListOfAuctions();
 
-        comboBoxAuctionSelected.getSelectionModel().selectedItemProperty().addListener(new ChangeListener<Auction>() {
+        comboBoxAuctionSelected.getSelectionModel().selectedItemProperty().addListener(new ChangeListener<Book>() {
             @Override
-            public void changed(ObservableValue<? extends Auction> arg0, Auction arg1, Auction arg2) {
+            public void changed(ObservableValue<? extends Book> arg0, Book arg1, Book arg2) {
                 if (arg2 != null) {
                     //Show log in textArea
                     webViewAuctionLog.getEngine().loadContent(arg2.getLog());
@@ -117,7 +116,7 @@ public class Controller {
                     protected void updateItem(Book t, boolean bln) {
                         super.updateItem(t, bln);
                         if (t != null) {
-                            setText(t.getTitle()+"max price: "+t.getMaxPriceToPay());
+                            setText(t.getTitle() + "max price: " + t.getMaxPriceToPay());
                         }
                     }
                 };
@@ -129,30 +128,22 @@ public class Controller {
 
     private void updateListOfAuctions() {
 
-        if (bookBuyerAgent == null || bookBuyerAgent.getBuyer() == null || bookBuyerAgent.getBuyer().getCurrentAuctions() == null)
+        if (bookBuyerAgent == null || bookBuyerAgent.getBuyer() == null || bookBuyerAgent.getBuyer().getWantedBooks() == null)
             return;
 
-        ObservableList<Auction> myObservableList4 = FXCollections.observableList(bookBuyerAgent.getBuyer().getCurrentAuctions());
+        ObservableList<Book> myObservableList4 = FXCollections.observableList(bookBuyerAgent.getBuyer().getWantedBooks());
         comboBoxAuctionSelected.setItems(myObservableList4);
-        comboBoxAuctionSelected.setCellFactory(new Callback<ListView<Auction>, ListCell<Auction>>() {
+        comboBoxAuctionSelected.setCellFactory(new Callback<ListView<Book>, ListCell<Book>>() {
                                                    @Override
-                                                   public ListCell<Auction> call(ListView<Auction> p) {
-                                                       ListCell<Auction> cell = new ListCell<Auction>() {
+                                                   public ListCell<Book> call(ListView<Book> p) {
+                                                       ListCell<Book> cell = new ListCell<Book>() {
                                                            @Override
-                                                           protected void updateItem(Auction t, boolean bln) {
+                                                           protected void updateItem(Book t, boolean bln) {
                                                                super.updateItem(t, bln);
                                                                if (t != null) {
 
-                                                                   if (t.isEnded()) {
-                                                                       if (t.isWon()) {
-                                                                           setText("[ENDED] " + t.getItem().getTitle() + " we won");
-                                                                       } else {
-                                                                           setText("[ENDED] " + t.getItem().getTitle() + " we lost");
-                                                                       }
-                                                                   } else {
-                                                                       setText(t.getItem().getTitle() + " with max price to pay of: " + t.getItem().getMaxPriceToPay());
+                                                                   setText(t.getTitle() + " with max price to pay of: " + t.getMaxPriceToPay());
 
-                                                                   }
                                                                }
                                                            }
                                                        };
@@ -165,20 +156,6 @@ public class Controller {
     }
 
     public void updateListOfBooksRemote() {
-        try {
-            Thread.sleep(1000);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-        Platform.runLater(new Runnable() {
-            @Override
-            public void run() {
-                updateListOfBooks();
-            }
-        });
-    }
-
-    public void updateListOfAuctionsRemote() {
         try {
             Thread.sleep(1000);
         } catch (InterruptedException e) {
@@ -257,6 +234,36 @@ public class Controller {
             return false;
         }
     }
+
+    public final static void showWebInfo(String message) {
+        try {
+            Thread.sleep(1000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        Platform.runLater(new Runnable() {
+            @Override
+            public void run() {
+                Alert alert = new Alert(Alert.AlertType.INFORMATION);
+                alert.setTitle("Info");
+                alert.setHeaderText(null);
+
+                Stage scene = StageHelper.getStages().get(0);
+                double x = scene.getX() + (scene.getWidth() / 2d - 200);
+                double y = scene.getY() + (scene.getHeight() / 2d - 75);
+                alert.setX(x);
+                alert.setY(y);
+
+                WebView webView = new WebView();
+                webView.getEngine().loadContent(message);
+                webView.setPrefSize(300, 300);
+                alert.getDialogPane().setContent(webView);;
+
+                alert.showAndWait();
+            }
+        });
+    }
+
 
 
 }

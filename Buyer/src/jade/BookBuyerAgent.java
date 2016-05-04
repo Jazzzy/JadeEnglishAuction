@@ -1,52 +1,26 @@
 package jade;
 
-/*****************************************************************
- * JADE - Java Agent DEvelopment Framework is a framework to develop
- * multi-agent systems in compliance with the FIPA specifications.
- * Copyright (C) 2000 CSELT S.p.A.
- * <p>
- * GNU Lesser General Public License
- * <p>
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation,
- * version 2.1 of the License.
- * <p>
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
- * <p>
- * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the
- * Free Software Foundation, Inc., 59 Temple Place - Suite 330,
- * Boston, MA  02111-1307, USA.
- *****************************************************************/
 
-
-import jade.core.AID;
 import jade.core.Agent;
 import jade.core.behaviours.CyclicBehaviour;
 import jade.core.behaviours.OneShotBehaviour;
-import jade.core.behaviours.TickerBehaviour;
 import jade.domain.DFService;
 import jade.domain.FIPAAgentManagement.DFAgentDescription;
 import jade.domain.FIPAAgentManagement.ServiceDescription;
 import jade.domain.FIPAException;
 import jade.lang.acl.ACLMessage;
 import jade.lang.acl.MessageTemplate;
-import model.Auction;
 import model.Book;
 import model.Buyer;
 import viewController.BookBuyerGUI;
 import viewController.Controller;
 
-import java.util.ArrayList;
-
 public class BookBuyerAgent extends Agent {
 
+/*
     // The list of known seller agents
     private AID[] sellerAgents = null;
+*/
 
     private Controller controller;
 
@@ -66,14 +40,10 @@ public class BookBuyerAgent extends Agent {
         this.controller = controller;
     }
 
-    // Put agent initializations here
     protected void setup() {
-        // Printout a welcome message
-        System.out.println("Hallo! Buyer-agent " + getAID().getName() + " is ready.");
 
         this.buyer = new Buyer();
 
-        // Create and show the GUI
         myGui = new BookBuyerGUI();
         myGui.setBookSellerAgent(this);
         new Thread() {
@@ -83,41 +53,91 @@ public class BookBuyerAgent extends Agent {
             }
         }.start();
 
-
-        // Add a TickerBehaviour that updates seller agents every minute
-        addBehaviour(new TickerBehaviour(this, 30000) {
-            protected void onTick() {
-                // Update the list of seller agents
-                DFAgentDescription template = new DFAgentDescription();
-                ServiceDescription sd = new ServiceDescription();
-                sd.setType("book-auctioning");
-                template.addServices(sd);
-                try {
-                    DFAgentDescription[] result = DFService.search(myAgent, template);
-                    System.out.println("Found the following seller agents:");
-                    sellerAgents = new AID[result.length];
-                    for (int i = 0; i < result.length; ++i) {
-                        sellerAgents[i] = result[i].getName();
-                        System.out.println(sellerAgents[i].getName());
-                    }
-                } catch (FIPAException fe) {
-                    fe.printStackTrace();
-                }
-            }
-        });
-
-        addBehaviour(new AskForAuctions(this));
-
-        addBehaviour(new LookingForAuctions());
+        DFAgentDescription dfd = new DFAgentDescription();
+        dfd.setName(getAID());
+        ServiceDescription sd = new ServiceDescription();
+        sd.setType("book-buying");
+        sd.setName("JADE-book-buying");
+        dfd.addServices(sd);
+        try {
+            DFService.register(this, dfd);
+        } catch (FIPAException fe) {
+            fe.printStackTrace();
+        }
 
         addBehaviour(new respondToProposals());
+        addBehaviour(new respondToWins());
 
+    }
+
+    private class respondToProposals extends CyclicBehaviour {
+
+        @Override
+        public void action() {
+            MessageTemplate mt = MessageTemplate.MatchPerformative(ACLMessage.CFP);
+            ACLMessage msg = myAgent.receive(mt);
+            if (msg != null) {
+                String title = msg.getConversationId();
+                Float price = Float.parseFloat(msg.getContent());
+                Book book = buyer.getBookByName(title);
+                if (book != null) {
+                    if (price <= book.getMaxPriceToPay()) {
+                        book.addToLog("We have accepted the price for this book: " + price);
+                        ACLMessage reply = msg.createReply();
+                        reply.setPerformative(ACLMessage.PROPOSE);
+                        reply.setContent(String.valueOf(price));
+                        myAgent.send(reply);
+                    }
+                } else {
+                    block();
+                }
+
+                controller.updateListOfBooksRemote();
+
+            } else {
+                block();
+            }
+
+
+        }
+    }
+
+    private class respondToWins extends CyclicBehaviour {
+
+        @Override
+        public void action() {
+            MessageTemplate mt = MessageTemplate.MatchPerformative(ACLMessage.REQUEST);
+            ACLMessage msg = myAgent.receive(mt);
+            if (msg != null) {
+                String title = msg.getConversationId();
+                Float price = Float.parseFloat(msg.getContent());
+                Book book = buyer.getBookByName(title);
+                if (book != null) {
+                    Controller.showWebInfo("You have won the book: " + book.getTitle() + "\n" + book.getLog());
+                    buyer.removeBookByTitle(book.getTitle());
+                } else {
+                    block();
+                }
+                controller.updateListOfBooksRemote();
+
+            } else {
+                block();
+            }
+
+
+        }
     }
 
 
     // Put agent clean-up operations here
     protected void takeDown() {
-        // Printout a dismissal message
+
+        try {
+            DFService.deregister(this);
+        } catch (FIPAException fe) {
+            fe.printStackTrace();
+        }
+
         myGui.dispose();
         System.out.println("Buyer-agent " + getAID().getName() + " terminating.");
     }
@@ -128,14 +148,11 @@ public class BookBuyerAgent extends Agent {
                 buyer.addBook(new Book(title, maxPrice));
                 System.out.println(title + " inserted into wanted books");
                 getController().updateListOfBooksRemote();
-
-                //TODO ask here for books
-
             }
         });
     }
 
-
+/*
     private class AskForAuctions extends TickerBehaviour {
 
         public AskForAuctions(Agent agent) {
@@ -291,15 +308,15 @@ public class BookBuyerAgent extends Agent {
             } else {
                 block();
             }
-        }
-    }
+        }*/
+}
 
 
-    /**
-     * Inner class RequestPerformer.
-     * This is the behaviour used by Book-buyer agents to request seller
-     * agents the target book.
-     */
+/**
+ * Inner class RequestPerformer.
+ * This is the behaviour used by Book-buyer agents to request seller
+ * agents the target book.
+ */
     /*
     private class RequestPerformer extends Behaviour {
         private AID bestSeller; // The agent who provides the best offer
@@ -392,4 +409,4 @@ public class BookBuyerAgent extends Agent {
     }  // End of inner class RequestPerformer
 
     */
-}
+
