@@ -85,7 +85,7 @@ public class BookBuyerAgent extends Agent {
 
 
         // Add a TickerBehaviour that updates seller agents every minute
-        addBehaviour(new TickerBehaviour(this, 5000) {
+        addBehaviour(new TickerBehaviour(this, 30000) {
             protected void onTick() {
                 // Update the list of seller agents
                 DFAgentDescription template = new DFAgentDescription();
@@ -195,6 +195,7 @@ public class BookBuyerAgent extends Agent {
                         ACLMessage reply = msg.createReply();
                         reply.setPerformative(ACLMessage.PROPOSE);
                         reply.setConversationId(conversationId);
+                        reply.setContent(String.valueOf(price));
                         myAgent.send(reply);
 
                         auction.addToLog("Sended a propose to " + msg.getSender().getLocalName() + " Saying we accept the price: " + price);
@@ -213,6 +214,28 @@ public class BookBuyerAgent extends Agent {
 
         public void action() {
 
+
+            MessageTemplate mtcErr = MessageTemplate.MatchPerformative(ACLMessage.DISCONFIRM);
+            ACLMessage confirmErr = myAgent.receive(mtcErr);
+            if (confirmErr != null) {
+                Auction auction = buyer.getAuctionByConversationId(confirmErr.getConversationId());
+                if (auction != null) {
+                    auction.addToLog("Received this from seller [" + confirmErr.getSender().getLocalName() + "]: " + confirmErr.getContent().split("%"));
+                    String item = confirmErr.getContent().split("%")[1];
+                    auction.addToLog("We have lost the auction for " + item );
+
+
+                    auction.setEnded(true);
+                    auction.endAuctionFail();
+
+
+                }
+                controller.updateListOfAuctionsRemote();
+                return;
+            }
+
+
+
             MessageTemplate mtc = MessageTemplate.MatchPerformative(ACLMessage.CONFIRM);
             ACLMessage confirm = myAgent.receive(mtc);
             if (confirm != null) {
@@ -223,7 +246,7 @@ public class BookBuyerAgent extends Agent {
                     float priceToPay = Float.parseFloat(confirm.getContent().split("%")[3]);
                     auction.addToLog("We have won the auction for " + item + " and we need to pay " + priceToPay);
 
-                    //buyer.removeAuctionByConversationId(confirm.getConversationId());
+
                     auction.setEnded(true);
                     auction.endAuctionSuccess();
                     buyer.removeBook(auction.getItem());
@@ -253,6 +276,7 @@ public class BookBuyerAgent extends Agent {
                         ACLMessage reply = msg.createReply();
                         reply.setPerformative(ACLMessage.PROPOSE);
                         reply.setConversationId(auction.getConversationId());
+                        reply.setContent(String.valueOf(proposedPrice));
                         myAgent.send(reply);
                         auction.addToLog("Sended a propose to " + msg.getSender().getLocalName() + " Saying we accept the price: " + proposedPrice);
                     } else {

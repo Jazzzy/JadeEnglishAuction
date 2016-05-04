@@ -171,7 +171,7 @@ public class BookSellerAgent extends Agent { //TODO:  Meter no id de conversacio
                 ACLMessage reply = msg.createReply();
                 Auction auction = seller.getCurrentAuctionByTitle(title);
                 System.out.println("Looking for an auction for " + title);
-                if (auction != null ) {
+                if (auction != null) {
                     // The requested book is available for sale. Reply with the price
                     reply.setPerformative(ACLMessage.INFORM);
                     reply.setContent(Float.toString(auction.getCurrentPrice()) + "%auction-" + auction.getId() + "%" + auction.getItem().getTitle());
@@ -194,9 +194,26 @@ public class BookSellerAgent extends Agent { //TODO:  Meter no id de conversacio
 
         public AID winner = null;
 
+
+        private ArrayList<AID> listOfBuyers;
+
         public Auctioning(Agent agent, Auction auction) {
             super(agent, 10000);
             this.auction = auction;
+        }
+
+        private void tellLoosers(ArrayList<AID> loosers) {
+
+            ACLMessage informLost = new ACLMessage(ACLMessage.DISCONFIRM);
+
+            for (AID aid : loosers) {
+                informLost.addReceiver(aid);
+            }
+
+            informLost.setConversationId("auction-" + auction.getId());
+            informLost.setContent("You lost%" + auction.getItem().getTitle() + "% this time, try again next auction");
+            myAgent.send(informLost);
+
         }
 
         public void finishAuction() {
@@ -204,6 +221,7 @@ public class BookSellerAgent extends Agent { //TODO:  Meter no id de conversacio
 
             if (winner == null) {
                 this.auction.addToLog("On tick " + this.getTickCount() + " we have finished the auction with no winner");
+                this.tellLoosers(this.listOfBuyers);
                 auction.endAuctionFail();
                 this.stop();
                 return;
@@ -211,6 +229,7 @@ public class BookSellerAgent extends Agent { //TODO:  Meter no id de conversacio
 
             if (auction.getCurrentPrice() < auction.getReservePrice()) {
                 this.auction.addToLog("On tick " + this.getTickCount() + " we have finished the auction with no winner because we didn't surpass the reserve price");
+                this.tellLoosers(this.listOfBuyers);
                 auction.endAuctionFail();
                 this.stop();
                 return;
@@ -219,10 +238,14 @@ public class BookSellerAgent extends Agent { //TODO:  Meter no id de conversacio
             ACLMessage informWin = new ACLMessage(ACLMessage.CONFIRM);
             informWin.addReceiver(this.winner);
             informWin.setConversationId("auction-" + auction.getId());
-            informWin.setContent("You won%" + auction.getItem() + "%for the price%" + auction.getCurrentPrice());
+            informWin.setContent("You won%" + auction.getItem().getTitle() + "%for the price%" + (auction.getCurrentPrice() - auction.getIncrement()));
             myAgent.send(informWin);
 
-            this.auction.addToLog("On tick " + this.getTickCount() + " we have finished the auction with [" + this.winner.getLocalName() + "] as a winner and he paid " + auction.getCurrentPrice());
+            this.listOfBuyers.remove(this.winner);
+            this.tellLoosers(this.listOfBuyers);
+
+
+            this.auction.addToLog("On tick " + this.getTickCount() + " we have finished the auction with [" + this.winner.getLocalName() + "] as a winner and he paid " + (auction.getCurrentPrice() - auction.getIncrement()));
             auction.endAuctionSuccess();
             this.stop();
             return;
@@ -232,9 +255,9 @@ public class BookSellerAgent extends Agent { //TODO:  Meter no id de conversacio
 
         public void onTick() {
 
-            ArrayList<AID> listOfBuyers = new ArrayList<>();
+            listOfBuyers = new ArrayList<>();
 
-            MessageTemplate mt = MessageTemplate.MatchPerformative(ACLMessage.PROPOSE).MatchConversationId("auction-" + auction.getId());
+            MessageTemplate mt = MessageTemplate.MatchPerformative(ACLMessage.PROPOSE).MatchConversationId("auction-" + auction.getId()).MatchContent(String.valueOf(auction.getCurrentPrice()));
 
             ACLMessage msg = myAgent.receive(mt);
             if (msg == null) { //No proposes for this auction
@@ -260,8 +283,11 @@ public class BookSellerAgent extends Agent { //TODO:  Meter no id de conversacio
                 msg = myAgent.receive(mt); //We keep getting all the other proposes
                 if (msg == null) { //if we only had one propose, this will be the winner and we finish the auction
                     this.auction.addToLog("On tick " + this.getTickCount() + " we only had one reply");
-                    finishAuction();
-                    return;
+                    if (auction.getCurrentPrice() >= auction.getReservePrice()) { //Coment this if if we dont want to end it till we have reservation price.
+                        finishAuction();
+                        return;
+                    }
+
                 } else {
                     while (msg != null) { //And responding telling them that they are not in the first place
                         reply = msg.createReply();
@@ -269,7 +295,7 @@ public class BookSellerAgent extends Agent { //TODO:  Meter no id de conversacio
                         reply.setContent(String.valueOf(auction.getCurrentPrice()));
                         myAgent.send(reply);
                         listOfBuyers.add(msg.getSender());
-                        this.auction.addToLog("On tick " + this.getTickCount() + " we have received a proposal from [" + this.winner.getLocalName() + "] but it was not the first one");
+                        this.auction.addToLog("On tick " + this.getTickCount() + " we have received a proposal from [" + msg.getSender().getLocalName() + "] but it was not the first one");
                         msg = myAgent.receive(mt);
                     }
 
@@ -286,7 +312,6 @@ public class BookSellerAgent extends Agent { //TODO:  Meter no id de conversacio
                     cfp.addReceiver(aid);
                 }
                 myAgent.send(cfp);
-
             }
 
             controller.updateListOfAuctionsRemote();

@@ -12,7 +12,7 @@
 
 <AnchorPane prefHeight="500.0" prefWidth="500.0" style="-fx-background-color: pink;" xmlns="http://javafx.com/javafx/8" xmlns:fx="http://javafx.com/fxml/1" fx:controller="viewController.Controller">
     <children>
-        <Button fx:id="Force update" layoutX="14.0" layoutY="14.0" onAction="#onActionButtonTest" text="buttonTest" />
+        <Button fx:id="buttonTest" layoutX="14.0" layoutY="14.0" onAction="#onActionButtonTest" text="Force update" />
         <TextField fx:id="textFieldTitle" layoutX="176.0" layoutY="54.0" promptText="Title of the book" />
         <TextField fx:id="textFieldPriceToPay" layoutX="206.0" layoutY="109.0" prefHeight="25.0" prefWidth="88.0" promptText="Price to pay" />
         <Button fx:id="buttonEnterInAuctions" layoutX="382.0" layoutY="109.0" mnemonicParsing="false" onAction="#onClicButtonAddBook" text="Enter in auctions" />
